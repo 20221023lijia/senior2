@@ -1,0 +1,21 @@
+﻿生成启动时间为 2024-02-16 16:29:12。
+     1>项目“K:\VS2015code\curriculum\model\meng150224\meng150224\meng150224.vcxproj”在节点 2 上(Build 个目标)。
+     1>ClCompile:
+         K:\VS2015\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /Oy- /GL /D _MBCS /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Release\\" /Fd"Release\vc140.pdb" /Gd /TP /analyze- /errorReport:prompt monte_carlo.cpp
+         monte_carlo.cpp
+     1>monte_carlo.cpp(8): warning C4244: “参数”: 从“time_t”转换到“unsigned int”，可能丢失数据
+       Link:
+         K:\VS2015\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"K:\VS2015code\curriculum\model\meng150224\Release\meng150224.exe" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /Debug /PDB:"K:\VS2015code\curriculum\model\meng150224\Release\meng150224.pdb" /OPT:REF /OPT:ICF /LTCG:incremental /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"K:\VS2015code\curriculum\model\meng150224\Release\meng150224.lib" /MACHINE:X86 /SAFESEH Release\basic_calc.obj
+         Release\main.obj
+         Release\monte_carlo.obj
+         正在生成代码
+         11 of 335 functions ( 3.3%) were compiled, the rest were copied from previous compilation.
+           0 functions were new in current compilation
+           0 functions had inline decision re-evaluated but remain unchanged
+         已完成代码的生成
+         meng150224.vcxproj -> K:\VS2015code\curriculum\model\meng150224\Release\meng150224.exe
+     1>已完成生成项目“K:\VS2015code\curriculum\model\meng150224\meng150224\meng150224.vcxproj”(Build 个目标)的操作。
+
+已成功生成。
+
+已用时间 00:00:00.86
