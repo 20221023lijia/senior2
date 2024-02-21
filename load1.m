@@ -29,15 +29,15 @@ l_F=[0 tube_length(1) interlevel_segment];
 rho=rho_0*exp(-beta*h);
 q=rho*V^2/2;%无需速度合成
 r=0:0.1:Stage1;
-X_p=zeros(1,length(D));
+X_p=zeros(1,length(D)-1);
 F_t=X_p;F_j=X_p;
 for i=1:length(D)-1
-    tube=[0 3.85 14.99 13.31];
-    beta(i)=atan((D(i+1)-(D(i))/(l_F(i+1)-l_F(i))));
+    tube=[0 3.85 14.99 13.31];%matlab中局部作用域生效在整个区间
+    beta1(i)=atan2((D(i+1)-D(i)),l_F(i+1)*2);
     F_t(i)=(D(i)+D(i+1))*l_F(i+1)/2/2;
-    F_j(i)=D(i)*tube(i);
-    X_p(i)=3/2*(alpha^2+2*beta(i)^2)*q*(pi*(D(i)^2-D(i+1)^2)/4);%修改角度
-    q_axp(i)=2*pi*beta(i)*q*(alpha^2+2*beta(i)^2);
+    F_j(i)=D(i)*tube(i)/2;
+    X_p(i)=3/2*(alpha^2+2*beta1(i)^2)*q*(pi*(D(i+1)^2-D(i)^2)/4);%修改角度
+    q_axp(i)=-2*pi*beta1(i)*q*(alpha^2+2*beta1(i)^2);
 end
 X=sum(X_p)*(1+0.4)*(1+0.2);
 nx=(P-X)/m/g;
@@ -45,28 +45,34 @@ nx=(P-X)/m/g;
 % s=quad(ac,pi/4,pi/2)%自适应 Simpson 积分法计算数值积分
 %'function_handle' 类型的操作数不支持运算符 '+'。  不支持一元运算符 '-'。
 %q_ax=-(sum(X_p)*0.4/sum(F_t+F_j)*r+(@(r)(0<r<l_F(2))*q_axp(1)+(l_F(2)<r<l_F(3))*q_axp(2)+(l_F(3)<r<l_F(4))*q_axp(3)+(l_F(4)<r<l_F(5))*q_axp(4)));
-%必须分开算——因为每一段l、r1、r2不一样
-q_ax=(@(r)(0<r<l_F(2))*q_axp(1)+(l_F(2)<r<l_F(3))*q_axp(2)+(l_F(3)<r<l_F(4))*q_axp(3)+(l_F(4)<r<l_F(5))*q_axp(4)+sum(X_p)*0.4/sum(F_t+F_j)*r);
-plot(r,q_ax)
+%必须分开算q_axp——因为每一段l、r1、r2不一样
+%matlab中索引从1开始
+q_ax=@(x)((x>frame(1)&x<frame(2))*q_axp(1).*x+...
+    (x>frame(3)&x<frame(5))*q_axp(2).*x+...
+    (x>frame(end-6)&x<frame(end-5))*q_axp(3).*x+...
+    (x>frame(end-1)&x<frame(end))*q_axp(4).*x-...
+    sum(X_p)*0.4/sum(F_t+F_j).*x);
+figure(1)
+plot(r,q_ax(r))%调用句柄
 %plot 函数期望的是向量或矩阵形式的数据作为输入
 qm=[0 160 125 100 55 55 100 100 250 250 250 370 400 500 500 500 740];%kg/m
-q_m=zeros(1,100);
-for i=1:2:length(q_m)-1
-    frame=[0 3.27 3.27 7.12 7.12 8.73 ...
-        8.73 8.98 8.98 12.56 12.56 14 ...
-        14 16.49 16.49 18.49 18.49 21.29 ...
-        21.29 23.97 23.97 28.94 28.94 30.02 ...
-        30.02 35.31 35.31 37 37 42.25 ...
-        42.25 46.28];
-    qm=[0 160 125 125 125 100 ...
-        55 55 100 100 250 250 ...
-        250 370 400 400 500 500 ...
-        500 740];%kg/m
-    %无法从 function_handle 转换为 double      
-    q_m(i)=@(r)(frame(i)<r<=frame(i+1))*(((qm(i+1)-qm(i))/(frame(i+1)-frame(i))*(r-frame(i)))+qm(i));
-end
-%q_m(q_m==0) = [];
-q_m=-q_m;
+%% 出错，请保持修正
+% for i=1:2:length(q_m)-1
+%     frame1=[0 3.27 3.27 7.12 7.12 8.73 ...
+%         8.73 8.98 8.98 12.56 12.56 14 ...
+%         14 16.49 16.49 18.49 18.49 21.29 ...
+%         21.29 23.97 23.97 28.94 28.94 30.02 ...
+%         30.02 35.31 35.31 37 37 42.25 ...
+%         42.25 46.28];
+%     qm=[0 160 125 125 125 100 ...
+%         55 55 100 100 250 250 ...
+%         250 370 400 400 500 500 ...
+%         500 740];%kg/m
+%     %无法从 function_handle 转换为 double      
+%     q_m(i)=@(r)(r>frame1(i)&r<=frame1(i+1))*(((qm(i+1)-qm(i))/(frame1(i+1)-frame1(i)).*(r-frame1(i)))+qm(i));
+% end
+% %q_m(q_m==0) = [];
+% q_m=-q_m;
 
 
 
