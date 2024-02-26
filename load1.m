@@ -21,14 +21,19 @@ D=[0 3.2 2.6 3.8 5.6];
 l01=1.93; l45=1.64; l89=2.64; l1314=2.8;
 EF=1e-8*[1 15 10 10 7 7 5.5 5.5 12 12 12 18 20 25 25 25 37];%N
 % stairs(qm); 绘制阶梯图
+tabluar15_2=[3.2700 3.8500 1.6100 0.2500 3.5800 1.4400 2.4900 2.0000 2.8000 2.6800 4.9700 1.0800    5.2900    1.6900    5.2500    4.0300];
+fprintf('tabular1.5column2_length=%.2f\n',tabluar15_2)
 tube_length=[3.2700 3.8500 1.6100+0.2500 3.5800 1.4400 2.4900 2.0000 2.8000 2.6800 4.9700 1.0800    5.2900    1.6900    5.2500    4.0300];
 interlevel_segment=[1.86 4.97 4.03];
 tube=[3.85 14.99 13.31];
 lamba=tube./D(2:4);
 l_F=[0 tube_length(1) interlevel_segment];
+frame_Y=[3.27 7.12 8.98 23.97 28.94 42.25 46.28];
+
 %% 1.2 计算纵向过载nx以及轴力N
 %计算空气阻力
 %g=g0*(Re/(Re+h))^2;
+k_axf=0.4;
 rho=rho_0*exp(-beta*h);
 q=rho*V^2/2;%无需速度合成
 r=0:0.1:Stage1;
@@ -36,14 +41,16 @@ X_p=zeros(1,length(D)-1);
 F_t=X_p;F_j=X_p;
 for i=1:length(D)-1
     tube=[0 3.85 14.99 13.31];%matlab中局部作用域生效在整个区间
-    beta1(i)=atan2((D(i+1)-D(i)),l_F(i+1)*2);
+    beta1(i)=atan2((D(i+1)-D(i)),l_F(i+1)*2);%（y,x）
     F_t(i)=(D(i)+D(i+1))*l_F(i+1)/2/2;
     F_j(i)=D(i)*tube(i)/2;
     X_p(i)=3/2*(alpha^2+2*beta1(i)^2)*q*(pi*(D(i+1)^2-D(i)^2)/4);%修改角度
-    q_axp(i)=-2*pi*beta1(i)*q*(alpha^2+2*beta1(i)^2);
+    q_axp(i)=-2*pi*beta1(i)*q*(alpha^2+2*beta1(i)^2)*1.5;
 end
+fprintf('tabular1.5column5_X_p=%.2f\n',X_p)
+fprintf('tabular1.5column5_q_axp=%.2f\n',q_axp)
 tube(tube==0)=[];
-X=sum(X_p)*(1+0.2)*(1+0.15);   %2   6   15  25  
+X=sum(X_p)*(1+k_axf)*(1+0.20);   %2-6   15-25
 nx=(P-X)/m/g;
 % ac=@(x)sin(x)./x
 % s=quad(ac,pi/4,pi/2)%自适应 Simpson 积分法计算数值积分
@@ -58,11 +65,63 @@ nx=(P-X)/m/g;
 %     sum(X_p)*0.2/sum(F_t+F_j).*x);
 % figure(1)
 % plot(r,q_ax(r))  %调用句柄
-r1=[3.2 3.2 2.6 2.6 3.8 3.8 5.6]/2;%我觉得你需要改
-q_axp_0=[q_axp(1) q_axp(2) q_axp(2) q_axp(3) q_axp(3) q_axp(4) q_axp(4)];
-q_ax_0=(-sum(X_p)*0.2/sum(F_t+F_j)+q_axp_0).*r1
-q_ax_1=-D(2:4)/2*sum(X_p)*0.2/sum(F_t+F_j)
-%% 这个地方不对，你可以想想
+r1=[3.2 3.2 2.6 2.6 3.8 3.8 5.6]/2;
+q_axp_0=[q_axp(1) 0 q_axp(2) 0 q_axp(3) 0 q_axp(4)];
+q_axf=-D(2:5)/2*sum(X_p)*k_axf/sum(F_t+F_j);
+fprintf('部分可信需要核对tabular1.5column6_q_axf=%.2f\n',q_axf)
+%% 需要 think twice
+q_ax=(-sum(X_p)*k_axf/sum(F_t+F_j)+q_axp_0).*r1;
+fprintf('tabular1.5column7_q_ax=%.2f\n',q_ax)
+q_ax=[];
+figure(1)
+q_ax1=-[0
+12303.74
+2608.42
+2608.42
+-973.42
+-1462.5
+-1462.5
+-1462.5
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+2119.34
+3756.04
+4734.20
+3097.50
+3097.50
+3097.50
+3097.50
+3097.50
+3097.50
+3097.50
+3097.50
+11949.55
+13416.78
+];
+frame_01=[0 3.27 3.85 1.61 0.25 3.58 1.44 2.49 2 2.8 2.68 4.97 1.08 5.29 1.69 5.25 4.03];
+frame_0=cumsum(frame_01);
+frame_1=zeros(1,length(frame_0)*2-2);
+N_a(1)=0;
+j=2;
+for i=2:length(frame_0)
+    frame_1(j:j+1)=[frame_0(i) frame_0(i)];
+    N_a(i)=(q_ax1(i-1)+q_ax1(i))*frame_01(i)/2;
+    j=j+2;
+end
+frame_1(end)=[];
+plot(frame_1,q_ax1)
+
+
+
 %plot 函数期望的是向量或矩阵形式的数据作为输入
 qm=[0 160 125 100 55 55 100 100 250 250 250 370 400 500 500 500 740];%kg/m
 qm=-qm*nx*g
@@ -76,15 +135,18 @@ for i=1:2:20
         55 55 100 100 250 250 ...
         250 370 400 400 500 500 ...
         500 740];%kg/m
-    %无法从 function_handle 转换为 double (不可以将其赋值给矩阵)     
-    %refresh 
-     q_m1=@(r)(r>=frame1(i)&r<=frame1(i+1)).*(((qm(i+1)-qm(i))/(frame1(i+1)-frame1(i)).*(r-frame1(i)))+qm(i));
-     q_m(:,i)=q_m1(r);
+    %无法从 function_handle 转换为 double (不可以将其赋值给矩阵)
+    %refresh
+    q_m1=@(r)(r>=frame1(i)&r<=frame1(i+1)).*(((qm(i+1)-qm(i))/(frame1(i+1)-frame1(i)).*(r-frame1(i)))+qm(i));
+    q_m(:,i)=q_m1(r);
 end
 q_m(q_m==0) = [];
-q_m=-q_m*nx*g;
-figure(1) 
+q_m=q_m*nx*g;
+figure(1)
 plot(r,q_m)
+% for i = 1:length(r)
+%     text(r(i),q_m(i), sprintf('%0.2f', q_m(i)), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
+% end
 
 tube_length=[3.2700 3.8500 1.6100+0.2500 3.5800 1.4400 2.4900 2.0000 2.8000 2.6800 4.9700 1.0800    5.2900    1.6900    5.2500    4.0300];
 qx=[81588-402.5 1304.2-314.4 314.4+2516 251.5+2045 1059.7-138.3 1059.7-251.5 1059.7-628.9 ...
@@ -111,16 +173,16 @@ P_Tx=-nx*mT*g;
 delta=deg2rad(4.8);
 Y_j=1.5*alpha^2*q.*lamba.*(pi.*D(2:4).^2/4);
 Y_i=zeros(1,length(D)-1);
-frame_Y=[3.27 7.12 8.98 23.97 28.94 42.25 46.28];
 for i=1:length(D)-1
     Y_i(i)=3*alpha*q*(pi*(D(i+1)^2-D(i)^2)/4);
     c(i)=l_F(i+1)/3*(1+D(i+1)/(D(i+1)+D(i)));
 end
+Y_i(2)=alpha*q*(pi*(D(3)^2-D(2)^2)/4)*0.65;
 Y=sum(Y_j)+sum(Y_i);
 ny=(P*delta+Y)/m/g;
 % 压心(对最前边取矩)
 cz_0=[c(1) frame_Y(1)+tube(1)/2 frame_Y(2)+c(2) frame_Y(3)+tube(2)/2 ...
-      frame_Y(4)+c(3) frame_Y(5)+tube(3)/2 frame_Y(6)+c(4)];
+    frame_Y(4)+c(3) frame_Y(5)+tube(3)/2 frame_Y(6)+c(4)];
 %Y_=[Y_i(1) Y_j(1) Y_i(2) Y_j(2) Y_i(3) Y_j(3) Y_i(4)];
 Y_=[];%初始化
 for i=1:2*length(Y_i)-1
@@ -133,20 +195,20 @@ end
 cz=(Y_*cz_0')/Y;% 注意逆的位置
 
 %EF刚度
-a=cz-29.412;b=Stage1-29.412;Iz=.2041e8;
-Mz=Y*a-P*delta*b;
+a=-cz+29.412;b=Stage1-29.412;Iz=.20413e8;
+Mz=Y*a-P*delta*b;%逆时针为正
 zz=Mz/Iz;
 
 
 %% 绘制剪力、弯矩
 A= [0,3.27, 3.85, 1.61, 0.25, 3.58, 0.3501, 1.09, 2.49, 2.0, 2.8, 0.3502, 2.33, 4.97, 1.08, 2.28, 3.01, 1.69, 2.246, 3.004, 4.03];
 A=cumsum(A);
-B0 = zeros(2*size(A,2)-1, 1);   
+B0 = zeros(2*size(A,2)-1, 1);
 for i = 1:size(A,2)-1
     B0(2*i-1) = A(i); % 将当前元素赋值到B
     B0(2*i) = (A(i) + A(i+1)) / 2; % 计算当前元素与下一个元素的平均值，并赋值
 end
-B0(end) = A(end); 
+B0(end) = A(end);
 Q1= [0, 76.56, 80.19, 75.77, 75.95, 71.25, 71.49, 65.52, 67.08, 68.22, 37.05, 37.14, 5.888, 59.19, 58.45, 57.99, -106, -108.2, -110.5, -113.7];
 Q2= [19.15, 78.4, 77.46, 75.86, 74.87, 71.37, 69.36, 66.31, 67.69, 54.9, 37.09, 24.64, 30.17, 59.13, 58.25, -11.88, -106.7, -109.3, -190.0, -62.13];
 Q3= [76.56, 80.19, 74.99, 75.95, 71.96, 71.49, 66.98, 67.08, 68.28, 39.86, 37.14, 11.09, 59.19, 59.06, 57.99, -85.97, -107.4, -110.5, -273.3, -0.00001943];
