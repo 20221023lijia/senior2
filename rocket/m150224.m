@@ -28,8 +28,10 @@ for i=1:N   %只要次数够高，最后肯定是实际的最优值
 end
 Z_0 %%如果添加\t
 P0_0
-fprintf('%.2f\t',V_x) 
-fprintf('%.2f\n',m0) 
+fprintf('V_x=%.2f\t',V_x)
+% 在 V_x 的所有值后输出换行符，开始新的一行
+fprintf('\n');
+fprintf('m0=%.2f\n',m0) 
 %toc 
 
 
