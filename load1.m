@@ -1,5 +1,10 @@
 clc;close all;dbclear all
 % K:\Matlab\code\mechaincs\launch_vehicle\load
+load('q_m_1.mat',"q_m_1")
+load('T_qm1.mat',"T_qm1")
+load('s_mi.mat',"s_mi")
+load('N_m0.mat',"N_m0")
+
 h=4.5e3;%km->m
 g=9.81;Re=6371e3;rho_0=1.225;beta=1.3e-4;
 u=26.5;V=350;
@@ -11,6 +16,7 @@ alpha=atan(u/V);
 Ma= v2Mach(V,h); %1.0849 差别不大
 P=2400e3;%KN->N
 m=163772.2;%kg<-ton
+m_x=21609;
 
 Stage1=46.28;  Stage3=16.49;%m
 block1=17.34;  block2=12.45;
@@ -33,7 +39,7 @@ frame_Y=[3.27 7.12 8.98 23.97 28.94 42.25 46.28];
 %% 1.2 计算纵向过载nx以及轴力N
 %计算空气阻力
 %g=g0*(Re/(Re+h))^2;
-k_axf=0.4;
+k_axf=0.2;
 rho=rho_0*exp(-beta*h);
 q=rho*V^2/2;%无需速度合成
 r=0:0.1:Stage1;
@@ -47,7 +53,10 @@ for i=1:length(D)-1
     X_p(i)=3/2*(alpha^2+2*beta1(i)^2)*q*(pi*(D(i+1)^2-D(i)^2)/4);%修改角度
     q_axp(i)=-2*pi*beta1(i)*q*(alpha^2+2*beta1(i)^2)*1.5;
 end
-fprintf('tabular1.5column5_X_p=%.2f\n',X_p)
+C_xp0=1.949*abs(beta1(2))^1.7*(0.8+1/Ma^2);
+%% redo!!!??????????
+X_p(2)=-C_xp0*q*(pi*(D(3)^2-D(2)^2)/4)-5.1802e+03/2*alpha;
+fprintf('tabular1.5column3_X_p=%.2f\n',X_p)
 fprintf('tabular1.5column5_q_axp=%.2f\n',q_axp)
 tube(tube==0)=[];
 X=sum(X_p)*(1+k_axf)*(1+0.20);   %2-6   15-25
@@ -68,61 +77,30 @@ nx=(P-X)/m/g;
 r1=[3.2 3.2 2.6 2.6 3.8 3.8 5.6]/2;
 q_axp_0=[q_axp(1) 0 q_axp(2) 0 q_axp(3) 0 q_axp(4)];
 q_axf=-D(2:5)/2*sum(X_p)*k_axf/sum(F_t+F_j);
-fprintf('部分可信需要核对tabular1.5column6_q_axf=%.2f\n',q_axf)
-%% 需要 think twice
-q_ax=(-sum(X_p)*k_axf/sum(F_t+F_j)+q_axp_0).*r1;
-fprintf('tabular1.5column7_q_ax=%.2f\n',q_ax)
-q_ax=[];
-figure(1)
-q_ax1=-[0
-12303.74
-2608.42
-2608.42
--973.42
--1462.5
--1462.5
--1462.5
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-2119.34
-3756.04
-4734.20
-3097.50
-3097.50
-3097.50
-3097.50
-3097.50
-3097.50
-3097.50
-3097.50
-11949.55
-13416.78
-];
+fprintf('tabular1.5column6_q_axf=%.2f\n',q_axf)
+%q_ax需要手动计算
+
 frame_01=[0 3.27 3.85 1.61 0.25 3.58 1.44 2.49 2 2.8 2.68 4.97 1.08 5.29 1.69 5.25 4.03];
 frame_0=cumsum(frame_01);
 frame_1=zeros(1,length(frame_0)*2-2);
-N_a(1)=0;
+N_a(1)=0;T_qm(1)=0;
 j=2;
 for i=2:length(frame_0)
     frame_1(j:j+1)=[frame_0(i) frame_0(i)];
     N_a(i)=(q_ax1(i-1)+q_ax1(i))*frame_01(i)/2;
+    T_qm(i)=(q_m_1(i-1)+q_m_1(i))*frame_01(i)/2;
     j=j+2;
 end
 frame_1(end)=[];
-plot(frame_1,q_ax1)
-
-
-
-%plot 函数期望的是向量或矩阵形式的数据作为输入
+N_a=cumsum(N_a);T_qm=cumsum(T_qm);
+fprintf('tabular1.5column8_N_a=\n')
+fprintf('%.2f\n',N_a)
+fprintf('tabular1.5column10_T_qm=\n')
+fprintf('%.2f\n',T_qm)
+figure(1)
+load('q_axf1.mat',"q_axf1")
+plot(frame_1,q_axf1)
+%plot向量或矩阵形式的数据作为输入
 qm=[0 160 125 100 55 55 100 100 250 250 250 370 400 500 500 500 740];%kg/m
 qm=-qm*nx*g
 q_m=zeros(length(r),100);
@@ -131,7 +109,7 @@ for i=1:2:20
         8.73  14 ...
         14 18.49 18.49 23.97 23.97 28.94 28.94 35.31 35.31 42.25 ...
         42.25 46.28];
-    qm=[0 160 125 125 125 100 ...
+    qm=[0 160 125 125 125 100 ...%0.25/(0.25+1.61)*25+100
         55 55 100 100 250 250 ...
         250 370 400 400 500 500 ...
         500 740];%kg/m
@@ -141,12 +119,25 @@ for i=1:2:20
     q_m(:,i)=q_m1(r);
 end
 q_m(q_m==0) = [];
-q_m=q_m*nx*g;
-figure(1)
-plot(r,q_m)
+q_m0=q_m*nx*g;
+figure(2)
+%plot(r,q_m)
+plot(frame_1,q_m_1)
+
 % for i = 1:length(r)
 %     text(r(i),q_m(i), sprintf('%0.2f', q_m(i)), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
 % end
+figure(3)
+load('N_a1.mat',"N_a1")
+plot(frame_1,N_a1)
+figure(4)
+plot(frame_1,T_qm1)
+
+%% find better sln
+%% fig4=plot_out(q_m);
+
+N_m_L=-nx*g*m_x;
+fprintf('N_m_L=%.2f\n',N_m_L)
 
 tube_length=[3.2700 3.8500 1.6100+0.2500 3.5800 1.4400 2.4900 2.0000 2.8000 2.6800 4.9700 1.0800    5.2900    1.6900    5.2500    4.0300];
 qx=[81588-402.5 1304.2-314.4 314.4+2516 251.5+2045 1059.7-138.3 1059.7-251.5 1059.7-628.9 ...
@@ -156,13 +147,24 @@ N=cumsum(N)
 %计算集中质量力（不加燃料）
 mi=[0 0 2450 40 40 49+150 0 45 40 50+854 0 200 300 200 300+3801];
 P_ix=-nx*mi*g;
+P_ix1=-nx*s_mi*g;
+N_m=-nx*N_m0*g;
+fprintf('tabular1.5column14_N_m=\n')
+fprintf('%.2f\n',-N_m)
+figure(5)
+plot(frame_1,P_ix1)
+figure(6)
+plot(frame_1,N_m)
 %计算增压压力(注意正负)
-p_0=[.3  .27 .35 .35 .32 .29]*1e3;
+p_0=[.3  .27 .35 .35 .32 .29]*1e6;%MPA
 D_0=[D(3) D(3) D(3) D(3) D(4) D(4)];
 P_0x=pi.*D_0.^2/4.*p_0;
 P_1x=[P_0x(1) P_0x(1)-P_0x(2) P_0x(2) ...
     P_0x(3) P_0x(3)-P_0x(4) P_0x(4) ...
     P_0x(5) P_0x(5) P_0x(6) P_0x(6)];
+fprintf('tabular1.5column17_N_0=\n')
+fprintf('%.0f\n',P_1x)
+% fprintf('%ld\n',P_1x)%round()四舍五入;%d int;%u或ld unsigned int
 %计算的边缘点，前两个罐子记得加减
 %计算燃料压力(圆柱形=圆台+圆球)【需不需要想得更复杂一些】
 mT=[979+15016 1412+6597 1459+17512 1288+12865 4988+40209.3 4400+35434.6];
@@ -177,7 +179,7 @@ for i=1:length(D)-1
     Y_i(i)=3*alpha*q*(pi*(D(i+1)^2-D(i)^2)/4);
     c(i)=l_F(i+1)/3*(1+D(i+1)/(D(i+1)+D(i)));
 end
-Y_i(2)=alpha*q*(pi*(D(3)^2-D(2)^2)/4)*0.65;
+Y_i(2)=alpha*q*(pi*(D(3)^2-D(2)^2)/4)*0.6;
 Y=sum(Y_j)+sum(Y_i);
 ny=(P*delta+Y)/m/g;
 % 压心(对最前边取矩)
