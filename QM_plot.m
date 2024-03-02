@@ -46,5 +46,12 @@ title(plotTitle);
 %     text(x_expanded(i),final_vector(i), sprintf('%0.2f', final_vector(i)), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
 % 
 % end
+    % 找到最大值和最小值及其索引
+    [max_val, max_idx] = max(final_vector);
+    [min_val, min_idx] = min(final_vector);
+    
+    % 在最大值和最小值处添加标注
+    text(x_expanded(max_idx), max_val, sprintf('Max: %0.2f', max_val), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
+    text(x_expanded(min_idx), min_val, sprintf('Min: %0.2f', min_val), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
 grid on; 
 end

@@ -4,21 +4,27 @@ load('q_m_1.mat',"q_m_1")
 load('T_qm1.mat',"T_qm1")
 load('s_mi.mat',"s_mi")
 load('N_m0.mat',"N_m0")
+load('N_rho1.mat',"N_rho1")
+load('N_o1.mat',"N_o1")
+load('N_p1.mat',"N_p1")
+load('q_ax1.mat',"q_ax1")
+load('q_axf1.mat',"q_axf1")
+global frame_1
 
 h=4.5e3;%km->m
 g=9.81;Re=6371e3;rho_0=1.225;beta=1.3e-4;
 u=26.5;V=350;
 alpha=atan(u/V);
-% gamma=1.4;R=287.05;T0=288.15;lamda_T=6.5;
-% h=7.8824e+03
-% c=sqrt(gamma*R*(T0-lamda_T*h/1e3));%对流层温度估算公式
-% Ma=V/c;%1.0851
-Ma= v2Mach(V,h); %1.0849 差别不大
+gamma=1.4;R=287.05;T0=288.15;lamda_T=6.5;
+h1=7.8824e+03;
+c1=sqrt(gamma*R*(T0-lamda_T*h1/1e3));%对流层温度估算公式
+Ma=V/c1;%1.1342
+%Ma= v2Mach(V,h); %1.1343 差别不大
 P=2400e3;%KN->N
 m=163772.2;%kg<-ton
 m_x=21609;
 
-Stage1=46.28;  Stage3=16.49;%m
+Stage1=46.28;  Stage3=16.49;%m  越靠前级别就越高
 block1=17.34;  block2=12.45;
 frame=[0 3.27 7.12 8.73 8.98 12.56 14 16.49 18.49 21.29 23.97 28.94 30.02 35.31 37 42.25 46.28];
 %fuel=
@@ -38,8 +44,7 @@ frame_Y=[3.27 7.12 8.98 23.97 28.94 42.25 46.28];
 
 %% 1.2 计算纵向过载nx以及轴力N
 %计算空气阻力
-%g=g0*(Re/(Re+h))^2;
-k_axf=0.2;
+k_axf=0.4;k_b=0.2;
 rho=rho_0*exp(-beta*h);
 q=rho*V^2/2;%无需速度合成
 r=0:0.1:Stage1;
@@ -51,15 +56,14 @@ for i=1:length(D)-1
     F_t(i)=(D(i)+D(i+1))*l_F(i+1)/2/2;
     F_j(i)=D(i)*tube(i)/2;
     X_p(i)=3/2*(alpha^2+2*beta1(i)^2)*q*(pi*(D(i+1)^2-D(i)^2)/4);%修改角度
-    q_axp(i)=-2*pi*beta1(i)*q*(alpha^2+2*beta1(i)^2)*1.5;
+    %C_xp0=1.949*abs(beta1(2))^1.7*(0.8+1/Ma^2);
+    %X_p(2)=-C_xp0*q*(pi*(D(3)^2-D(2)^2)/4)-5.1802e+03/2*alpha;
+    %q_axp(i)=-2*pi*beta1(i)*q*(alpha^2+2*beta1(i)^2)*1.5;%仅计算系数
 end
-C_xp0=1.949*abs(beta1(2))^1.7*(0.8+1/Ma^2);
-%% redo!!!??????????
-X_p(2)=-C_xp0*q*(pi*(D(3)^2-D(2)^2)/4)-5.1802e+03/2*alpha;
 fprintf('tabular1.5column3_X_p=%.2f\n',X_p)
-fprintf('tabular1.5column5_q_axp=%.2f\n',q_axp)
 tube(tube==0)=[];
-X=sum(X_p)*(1+k_axf)*(1+0.20);   %2-6   15-25
+X=sum(X_p)*(1+k_axf)*(1+k_b);   %2-6   15-25
+X_bottom=sum(X_p)*(1+k_axf)*k_b;
 nx=(P-X)/m/g;
 % ac=@(x)sin(x)./x
 % s=quad(ac,pi/4,pi/2)%自适应 Simpson 积分法计算数值积分
@@ -74,32 +78,50 @@ nx=(P-X)/m/g;
 %     sum(X_p)*0.2/sum(F_t+F_j).*x);
 % figure(1)
 % plot(r,q_ax(r))  %调用句柄
-r1=[3.2 3.2 2.6 2.6 3.8 3.8 5.6]/2;
-q_axp_0=[q_axp(1) 0 q_axp(2) 0 q_axp(3) 0 q_axp(4)];
+r1=[0    3.2  2.6  3.8 ]/2;
+r1_=[3.2 2.6  3.8 5.6]/2;
+r1__=[0 3.2 3.2 2.6+25/181*0.6 2.6 2.6 3.8 3.8 5.6]/2;
+q_axp_=-2*X_p./(r1+r1_)./l_F(2:end);
+q_axp_0=[q_axp_(1) q_axp_(1) q_axp_(2)  q_axp_(2) q_axp_(2)...
+    q_axp_(3) q_axp_(3) q_axp_(4) q_axp_(4)];
+q_axp=q_axp_0.*r1__;
+fprintf('tabular1.5column5_q_axp=%.2f\n',-q_axp)
 q_axf=-D(2:5)/2*sum(X_p)*k_axf/sum(F_t+F_j);
-fprintf('tabular1.5column6_q_axf=%.2f\n',q_axf)
-%q_ax需要手动计算
+fprintf('tabular1.5column6_q_axf=%.2f\n',-q_axf)
+fprintf('tabular1.5column7_q_ax1=\n')
+fprintf('%.2f\n',-q_ax1)
+
 
 frame_01=[0 3.27 3.85 1.61 0.25 3.58 1.44 2.49 2 2.8 2.68 4.97 1.08 5.29 1.69 5.25 4.03];
+N_a1 = calculateValues(frame_01, q_ax1);
+T_qm1 = calculateValues(frame_01,q_m_1);
+
 frame_0=cumsum(frame_01);
 frame_1=zeros(1,length(frame_0)*2-2);
 N_a(1)=0;T_qm(1)=0;
 j=2;
 for i=2:length(frame_0)
     frame_1(j:j+1)=[frame_0(i) frame_0(i)];
-    N_a(i)=(q_ax1(i-1)+q_ax1(i))*frame_01(i)/2;
-    T_qm(i)=(q_m_1(i-1)+q_m_1(i))*frame_01(i)/2;
+    N_a(i)=(q_ax1(j-1)+q_ax1(j))*frame_01(i)/2;
+    T_qm(i)=(q_m_1(j-1)+q_m_1(j))*frame_01(i)/2;
     j=j+2;
 end
 frame_1(end)=[];
-N_a=cumsum(N_a);T_qm=cumsum(T_qm);
-fprintf('tabular1.5column8_N_a=\n')
-fprintf('%.2f\n',N_a)
-fprintf('tabular1.5column10_T_qm=\n')
-fprintf('%.2f\n',T_qm)
-figure(1)
-load('q_axf1.mat',"q_axf1")
-plot(frame_1,q_axf1)
+% N_a=cumsum(N_a);T_qm=cumsum(T_qm);
+% j=2;
+% for i=2:length(frame_0)
+%     N_a1(j:j+1)=[N_a(i) N_a(i)];
+%     T_qm1(j:j+1)=[T_qm(i) T_qm(i)];
+%     j=j+2;
+% end
+% N_a1(end)=[];T_qm1(end)=[];
+
+fprintf('tabular1.5column8_N_a1=\n')
+fprintf('%.2f\n',N_a1)
+fprintf('tabular1.5column10_T_qm1=\n')
+fprintf('%.2f\n',T_qm1)
+
+plotWithAnnotations(frame_1, q_axf1, 1, 'q_axf1');
 %plot向量或矩阵形式的数据作为输入
 qm=[0 160 125 100 55 55 100 100 250 250 250 370 400 500 500 500 740];%kg/m
 qm=-qm*nx*g
@@ -120,18 +142,13 @@ for i=1:2:20
 end
 q_m(q_m==0) = [];
 q_m0=q_m*nx*g;
-figure(2)
-%plot(r,q_m)
-plot(frame_1,q_m_1)
+plotWithAnnotations(frame_1, q_m_1, 2, 'q_m_1');
 
 % for i = 1:length(r)
 %     text(r(i),q_m(i), sprintf('%0.2f', q_m(i)), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
 % end
-figure(3)
-load('N_a1.mat',"N_a1")
-plot(frame_1,N_a1)
-figure(4)
-plot(frame_1,T_qm1)
+plotWithAnnotations(frame_1, N_a1, 3, 'N_a1');
+plotWithAnnotations(frame_1, T_qm1, 4, 'T_qm1');
 
 %% find better sln
 %% fig4=plot_out(q_m);
@@ -139,11 +156,10 @@ plot(frame_1,T_qm1)
 N_m_L=-nx*g*m_x;
 fprintf('N_m_L=%.2f\n',N_m_L)
 
-tube_length=[3.2700 3.8500 1.6100+0.2500 3.5800 1.4400 2.4900 2.0000 2.8000 2.6800 4.9700 1.0800    5.2900    1.6900    5.2500    4.0300];
-qx=[81588-402.5 1304.2-314.4 314.4+2516 251.5+2045 1059.7-138.3 1059.7-251.5 1059.7-628.9 ...
-    2478-628.9 3622-930.7   1548.7-1006.2 1548.7-1257.7 12761-1257.7 18806-1861.4]
-N=[81186*3.27/2 990*3.85 (2830+2296)*1.86/2 921*(3.58+1.44) 808*(2.49+2) 431*(2.8+2.68) (1849+2691)*4.97/2 542*(1.08+5.29) 291*(1.69+5.25) (11503+16945)*4.03/2]
-N=cumsum(N)
+N_rho_L=-nx*g*(m-m_x);
+fprintf('N_rho_L=%.2f\n',N_rho_L)
+
+
 %计算集中质量力（不加燃料）
 mi=[0 0 2450 40 40 49+150 0 45 40 50+854 0 200 300 200 300+3801];
 P_ix=-nx*mi*g;
@@ -151,10 +167,8 @@ P_ix1=-nx*s_mi*g;
 N_m=-nx*N_m0*g;
 fprintf('tabular1.5column14_N_m=\n')
 fprintf('%.2f\n',-N_m)
-figure(5)
-plot(frame_1,P_ix1)
-figure(6)
-plot(frame_1,N_m)
+plotWithAnnotations(frame_1, P_ix1, 5, 'P_ix1');
+plotWithAnnotations(frame_1, N_m, 6, 'N_m');
 %计算增压压力(注意正负)
 p_0=[.3  .27 .35 .35 .32 .29]*1e6;%MPA
 D_0=[D(3) D(3) D(3) D(3) D(4) D(4)];
@@ -164,11 +178,23 @@ P_1x=[P_0x(1) P_0x(1)-P_0x(2) P_0x(2) ...
     P_0x(5) P_0x(5) P_0x(6) P_0x(6)];
 fprintf('tabular1.5column17_N_0=\n')
 fprintf('%.0f\n',P_1x)
-% fprintf('%ld\n',P_1x)%round()四舍五入;%d int;%u或ld unsigned int
+% fprintf('%ld\n',P_1x)%round()四舍五入;  %d int;  %u或ld unsigned int
 %计算的边缘点，前两个罐子记得加减
 %计算燃料压力(圆柱形=圆台+圆球)【需不需要想得更复杂一些】
 mT=[979+15016 1412+6597 1459+17512 1288+12865 4988+40209.3 4400+35434.6];
-P_Tx=-nx*mT*g;
+P_Tx=-nx*mT*g;%作为前半部分存在
+fprintf('tabular1.5column15_P_Tx=\n')
+fprintf('%.0f\n',P_Tx)
+fprintf('tabular1.5column16_N_rho=\n')
+fprintf('%.0f\n',cumsum(P_Tx))
+plotWithAnnotations(frame_1, N_rho1, 7, 'N_rho1');
+N=N_m+N_a1'+N_rho1+N_o1+N_p1;
+fprintf('tabular1.5column19_N=\n')
+fprintf('%.2f\n',N)
+
+err(N_m_L,N_m(end),'err_m')  %input 字符串 只需要带引号
+err(N_rho_L,N_rho1(end),'err_rho')
+err(X_bottom,N(end),'err_N')
 
 
 %% 1.3 计算法向过载ny、角加速度zz，剪力Q和弯矩M
@@ -200,6 +226,8 @@ cz=(Y_*cz_0')/Y;% 注意逆的位置
 a=-cz+29.412;b=Stage1-29.412;Iz=.20413e8;
 Mz=Y*a-P*delta*b;%逆时针为正
 zz=Mz/Iz;
+writeDataToTxt(Y_, Y, c, tube, cz, cz_0, ny, zz, 'YYY.txt')
+
 
 
 %% 绘制剪力、弯矩
@@ -218,15 +246,40 @@ Q3= [76.56, 80.19, 74.99, 75.95, 71.96, 71.49, 66.98, 67.08, 68.28, 39.86, 37.14
 M1= [0.0, -83.47, -385.3, -512.8, -531.8, -798.8, -823.8, -899.8, -981.9, -1065.0, -1354.0, -1367.0, -1430.0, -1584.0, -1647.0, -1780.0, -1746.0, -1566.0, -1321.0, -243.3];
 M2 = [-10.44, -232.6, -448.7, -522.3, -667.0, -811.3, -862.2, -981.9, -1132.0, -1287.0, -1360.0, -1403.0, -1474.0, -1616.0, -1714.0, -1816.0, -1657.0, -1444.0, -1095.0, -64.36];
 M3 = [-83.47, -385.3, -510.1, -531.8, -798.7, -823.8, -899.4, -1065.0, -1200.0, -1353.0, -1367.0, -1424.0, -1584.0, -1647.0, -1780.0, -1742.0, -1566.0, -1321.0, -747.9, -0.0005365];
+%sln1
 Q = "Q";%字符串初始化
 M = "M";
 fig1=QM_plot(B0,Q1,Q2,Q3,Q);
 fig2=QM_plot(B0,M1,M2,M3,M);
+%% 截面校验
+m_bottom5=40;m_fuel5=979;a=2.6/2;b=.35;cc=29.412;g0=9.81;cc0=3*b/8;
+m_bottom6=49;m_gb6=150;m_fuel6=1412;m_bottom6=[m_bottom6  m_fuel6 m_gb6] ;
+x_bottom5_b=cc-frame(6);x_bottom5_f=cc-frame(6)-cc0;
+x_bottom6_b=cc-frame(7);x_bottom6_f=cc-frame(7)-cc0;x_bottom6_g=cc-frame(7)-1.64;
+x_bottom6=[x_bottom6_b x_bottom6_f x_bottom6_g];
+% 5截面
+g1=g0*(Re/(Re+h))^2;
+ny=0.3017;zz=-0.1354;
+P5y_b=-(m_bottom5)*g1*(ny+zz/g1*x_bottom5_b);
+P5y_f=-(m_fuel5)*g1*(ny+zz/g1*x_bottom5_f);
+P5y=P5y_b+P5y_f;
+I_bottom5=19/320*m_bottom5*b^2;I_fuel5=7;
+M5=P5y_f*cc0-zz*I_fuel5;%% 顺时针为正
+% 6截面
+I_bottom6=19/320*m_bottom6*b^2;I_fuel6=10;I_gb6=m_gb6/2*a^2;%圆柱体转动惯量
+x6y=[0 cc0 1.64];
+Ig6=[0 I_fuel6 0];
+P6y=-m_bottom6*g1.*(ny+zz/g1*x_bottom6);
+M6=P6y.*x6y-zz.*Ig6;
+%15截面
+
+%%当有发动机的时候怎么办
+err(-1e3*(71.96-71.25),P5y,'err_Q5') %现在用的是i-1时刻减i时刻
+err(-1e3*(66.98-65.52),sum(P6y),'err_Q6')
+err(-1e3*(-798.7+798.8),M5,'err_M5')
+err(-1e3*(-899.4+899.8),sum(M6),'err_M6')
 
 %% 2.1 桁架模型图
-
-
-
 %% 2.2 qt、M、Q
 
 
@@ -239,6 +292,7 @@ fig2=QM_plot(B0,M1,M2,M3,M);
 
 
 %% 3.1.1 罐体参数
+
 
 
 %% 3.1.2 罐体应力
