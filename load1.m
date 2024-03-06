@@ -1,5 +1,6 @@
 clc;close all;dbclear all
 % K:\Matlab\code\mechaincs\launch_vehicle\load
+%  fprintf("%.2f\n",X)
 load('q_m_1.mat',"q_m_1")
 load('T_qm1.mat',"T_qm1")
 load('s_mi.mat',"s_mi")
@@ -9,7 +10,7 @@ load('N_o1.mat',"N_o1")
 load('N_p1.mat',"N_p1")
 load('q_ax1.mat',"q_ax1")
 load('q_axf1.mat',"q_axf1")
-global frame_1
+global frame_1 
 
 h=4.5e3;%km->m
 g=9.81;Re=6371e3;rho_0=1.225;beta=1.3e-4;
@@ -196,7 +197,6 @@ err(N_m_L,N_m(end),'err_m')  %input 字符串 只需要带引号
 err(N_rho_L,N_rho1(end),'err_rho')
 err(X_bottom,N(end),'err_N')
 
-
 %% 1.3 计算法向过载ny、角加速度zz，剪力Q和弯矩M
 delta=deg2rad(4.8);
 Y_j=1.5*alpha^2*q.*lamba.*(pi.*D(2:4).^2/4);
@@ -253,12 +253,12 @@ fig1=QM_plot(B0,Q1,Q2,Q3,Q);
 fig2=QM_plot(B0,M1,M2,M3,M);
 %% 截面校验
 m_bottom5=40;m_fuel5=979;a=2.6/2;b=.35;cc=29.412;g0=9.81;cc0=3*b/8;
-m_bottom6=49;m_gb6=150;m_fuel6=1412;m_bottom6=[m_bottom6  m_fuel6 m_gb6] ;
+m_b6=49;m_gb6=150;m_fuel6=1412;m_bottom6=[m_b6  m_fuel6 m_gb6] ;
 x_bottom5_b=cc-frame(6);x_bottom5_f=cc-frame(6)-cc0;
 x_bottom6_b=cc-frame(7);x_bottom6_f=cc-frame(7)-cc0;x_bottom6_g=cc-frame(7)-1.64;
 x_bottom6=[x_bottom6_b x_bottom6_f x_bottom6_g];
 % 5截面
-g1=g0*(Re/(Re+h))^2;
+g1=g0*(Re/(Re+h))^2;g1=9.81;
 ny=0.3017;zz=-0.1354;
 P5y_b=-(m_bottom5)*g1*(ny+zz/g1*x_bottom5_b);
 P5y_f=-(m_fuel5)*g1*(ny+zz/g1*x_bottom5_f);
@@ -266,23 +266,36 @@ P5y=P5y_b+P5y_f;
 I_bottom5=19/320*m_bottom5*b^2;I_fuel5=7;
 M5=P5y_f*cc0-zz*I_fuel5;%% 顺时针为正
 % 6截面
-I_bottom6=19/320*m_bottom6*b^2;I_fuel6=10;I_gb6=m_gb6/2*a^2;%圆柱体转动惯量
-x6y=[0 cc0 1.64];
+I_bottom6=19/320*m_b6*b^2;I_fuel6=10;I_gb6=m_gb6/2*a^2;%圆柱体转动惯量
+x6y=[1.64 cc0 0 ];
 Ig6=[0 I_fuel6 0];
-P6y=-m_bottom6*g1.*(ny+zz/g1*x_bottom6);
+P6y_b=-m_b6*g1.*(ny+zz/g1*x_bottom6_b);
+P6y_g=-m_gb6*g1.*(ny+zz/g1*x_bottom6_g);
+P6y_f=-m_fuel6*g1.*(ny+zz/g1*x_bottom6_f);
+P6y_=P6y_b+P6y_g+P6y_f;
+P6y=[P6y_g  P6y_f P6y_b];
+% P6y=-m_b6*g1.*(ny+zz/g1*x_bottom6);
 M6=P6y.*x6y-zz.*Ig6;
-%15截面
+
 
 %%当有发动机的时候怎么办
 err(-1e3*(71.96-71.25),P5y,'err_Q5') %现在用的是i-1时刻减i时刻
-err(-1e3*(66.98-65.52),sum(P6y),'err_Q6')
+err(-1e3*(66.98-65.52),P6y_,'err_Q6')%标准值  实验值
 err(-1e3*(-798.7+798.8),M5,'err_M5')
 err(-1e3*(-899.4+899.8),sum(M6),'err_M6')
 
 %% 2.1 桁架模型图
 %% 2.2 qt、M、Q
-
-
+f=1.35;
+P_n=f*[-30 17];
+P_t=f*[25 -30];
+H=f*[10 -12];
+theta=ring_in2('1.txt');
+y_label={'','M,КН*М','N,КН','Q,КН','QT,КН/М'};
+for i=2:5
+plot2s(theta(:,1),theta(:,i), i+8,  y_label(i))
+%polarplot(theta(:,1),theta(:,2),'o')
+end 
 
 %% 2.3 确定桁架横截面
 
@@ -324,7 +337,7 @@ err(-1e3*(-899.4+899.8),sum(M6),'err_M6')
 
 
 
-
+% saveAllFigures("K:\Matlab\code\mechaincs\launch_vehicle\load\fig")
 
 
 
