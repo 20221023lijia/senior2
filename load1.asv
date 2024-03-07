@@ -10,7 +10,6 @@ load('N_o1.mat',"N_o1")
 load('N_p1.mat',"N_p1")
 load('q_ax1.mat',"q_ax1")
 load('q_axf1.mat',"q_axf1")
-
 global frame_1 
 
 h=4.5e3;%km->m
@@ -171,7 +170,7 @@ fprintf('tabular1.5column14_N_m=\n')
 fprintf('%.2f\n',-N_m)
 plotWithAnnotations(frame_1, P_ix1, 5, 'P_ix1');
 plotWithAnnotations(frame_1, N_m, 6, 'N_m');
-%计算增压压力(注意正负)[不需要相减，计算结果见data.mat]
+%计算增压压力(注意正负)
 p_0=[.3  .27 .35 .35 .32 .29]*1e6;%MPA
 D_0=[D(3) D(3) D(3) D(3) D(4) D(4)];
 P_0x=pi.*D_0.^2/4.*p_0;
@@ -193,9 +192,7 @@ plotWithAnnotations(frame_1, N_rho1, 7, 'N_rho1');
 N=N_m+N_a1'+N_rho1+N_o1+N_p1;
 fprintf('tabular1.5column19_N=\n')
 fprintf('%.2f\n',N)
-plotWithAnnotations(frame_1, N_o1, 8, 'N_o1');
-plotWithAnnotations(frame_1, N_p1, 9, 'N_p1');
-plotWithAnnotations(frame_1, N, 10, 'N');
+
 err(N_m_L,N_m(end),'err_m')  %input 字符串 只需要带引号
 err(N_rho_L,N_rho1(end),'err_rho')
 err(X_bottom,N(end),'err_N')
@@ -299,19 +296,15 @@ H_p(35)=H(1);H_p(36+13)=H(2);
 theta=ring_in2('1.txt');
 y_label={'','M,КН*М','N,КН','Q,КН','QT,КН/М'};
 for i=2:5
-plot2s(theta(:,1),theta(:,i), i+11,  y_label(i))
+plot2s(theta(:,1),theta(:,i), i+8,  y_label(i))
 %polarplot(theta(:,1),theta(:,2),'o')
 end 
 A=[];
 Q_(6)=theta(6,4)+P_n_p(6);Q_(36+13)=theta(36+13,4)+P_n_p(36+13);
-N_(18)=theta(18,3)+P_t_p(18);N_(36+31)=theta(36+31,3)+P_t_p(36+31);
-M_(35)=theta(35,2)+H_p(35);M_(36+13)=theta(36+13,2)+H_p(36+13);
-fprintf('Q_=%.2f\n',Q_(6),Q_(36+13))
-fprintf('N_=%.2f\n',N_(18),N_(36+31))
-fprintf('M_=%.2f\n',M_(35),M_(36+13))
+Q_(6)=theta(6,4)+P_t_p(18);Q_(36+13)=theta(36+13,4)+P_t_p(18);
+
+
 %% 2.3 确定桁架横截面
-
-
 
 
 %% 2.4 桁架表面计算
