@@ -154,14 +154,10 @@ plotWithAnnotations(frame_1, T_qm1, 4, 'T_qm1');
 
 %% find better sln
 %% fig4=plot_out(q_m);
-
 N_m_L=-nx*g*m_x;
 fprintf('N_m_L=%.2f\n',N_m_L)
-
 N_rho_L=-nx*g*(m-m_x);
 fprintf('N_rho_L=%.2f\n',N_rho_L)
-
-
 %计算集中质量力（不加燃料）
 mi=[0 0 2450 40 40 49+150 0 45 40 50+854 0 200 300 200 300+3801];
 P_ix=-nx*mi*g;
@@ -230,9 +226,6 @@ a=-cz+29.412;b=Stage1-29.412;Iz=.20413e8;
 Mz=Y*a-P*delta*b;%逆时针为正
 zz=Mz/Iz;
 writeDataToTxt(Y_, Y, c, tube, cz, cz_0, ny, zz, 'YYY.txt')
-
-
-
 %% 绘制剪力、弯矩
 A= [0,3.27, 3.85, 1.61, 0.25, 3.58, 0.3501, 1.09, 2.49, 2.0, 2.8, 0.3502, 2.33, 4.97, 1.08, 2.28, 3.01, 1.69, 2.246, 3.004, 4.03];
 A=cumsum(A);
@@ -279,15 +272,10 @@ P6y_=P6y_b+P6y_g+P6y_f;
 P6y=[P6y_g  P6y_f P6y_b];
 % P6y=-m_b6*g1.*(ny+zz/g1*x_bottom6);
 M6=P6y.*x6y-zz.*Ig6;
-
-
-%%当有发动机的时候怎么办
 err(-1e3*(71.96-71.25),P5y,'err_Q5') %现在用的是i-1时刻减i时刻
 err(-1e3*(66.98-65.52),P6y_,'err_Q6')%标准值  实验值
 err(-1e3*(-798.7+798.8),M5,'err_M5')
 err(-1e3*(-899.4+899.8),sum(M6),'err_M6')
-
-%% 2.1 桁架模型图9
 %% 2.2 qt、M、Q
 f=1.35;
 P_n=f*[-30 17];
@@ -319,18 +307,85 @@ fprintf('M_=%.2f\n',M_(35),M_(36+13))
 
 
 %% 3.1.1 罐体参数
+f=1.2;
+R_H=2450;
+R=1650;R_hatch=425/2;
+p0=0.18;g=9.81;
+rho_UDMH=1140;
+h = R_H - sqrt(R_H^2 - R^2);
+V_ellipses=2*pi*R^2*h/3;
+m_ellipses=rho_UDMH*V_ellipses;
+c=3*h/8;
 
+N_work=140e3;Q_work=90e3;M_work=330e6;
+k_sw=0.85;sigma_B=320;sigma_p=120;l_mainstay=2.4;
+t=60;V=554.6;H=3;q=46059;nx=3.5;
 
+p_ne = p0 + rho_UDMH * g * nx * H*1e-6; % Operational internal pressure内部运行压力
+p_maxe = p0 + rho * g * nx* (H + h)*1e-6; % Max operational pressure
+p_top=p_maxe;
+%连接部校验
+delta_Shell= ceil((f * p_ne * R*1e3) / (k_sw * sigma_B));%mm
 
-%% 3.1.2 罐体应力
+sigma_22_joint= (f * p_ne*R) / (delta_Shell)*1e3;
+sigma_11_joint_min=f*(N_work/(2*pi*R*1e3*delta_Shell)-M_work/(pi*(R*1e3)^2*delta_Shell));
+sigma_11_joint_max=f*(N_work/(2*pi*R*1e3*delta_Shell)+M_work/(pi*(R*1e3)^2*delta_Shell));
+tao_max=f*Q_work/(pi*R*1e3*delta_Shell);
+sigma_11_joint=[sigma_11_joint_max sigma_11_joint_min f*(N_work/(2*pi*R*1e3*delta_Shell))];
+tao_max_joint=[0 0 tao_max];
+sigma_ekv_joint=sqrt(sigma_11_joint.^2 - sigma_11_joint * sigma_22_joint + sigma_22_joint^2+3*tao_max_joint.^2); % Equivalent stress
+eta_joint = (k_sw * sigma_B) / max(sigma_ekv_joint)
 
-
-
-
+delta_bottom = ceil((f * p_maxe * R_H*1e3) / (2*k_sw * sigma_B));
+% 罐体参数计算
+theta_0 = asind(R / R_H);
+if theta_0<=60
+    k = 0.6;
+else
+    k=0.7;
+end
+l = k * sqrt(R*1e3*delta_Shell); 
+l_0 = k * sqrt(R_H*1e3*delta_bottom); 
+alpha_0=theta_0-180*l_0/pi/R_H;
+C=R_H*cosd(theta_0)-l;
+Omega_1 = -0.5 * C^2 * tand(alpha_0); 
+Omega_2 = 0.5 * l^2 *tand(theta_0)+ 0.5 *R_H*l_0 - 0.5 * C^2 * (tand(theta_0) - tand(alpha_0)); 
+Omega = (Omega_1 + Omega_2)*1e6;
+N_prime = f * p_maxe * Omega;
+F_lower_bound = abs(N_prime) / (k_sw * sigma_B) - delta_Shell * l - delta_bottom * l_0;
+F_brochure=F_lower_bound*(1+0.1);
+%问题一，这个数据我找不到
+b=sqrt(6*F_brochure/atand(theta_0));
+a=2*F_brochure/b;
 %% 3.2 罐体稳定性
-
-
-
+E = 6.8 * 10^4;
+% 法向应力
+k0= (1 / pi) * (100*delta_Shell / R) ^(3/8);
+alpha_kp = (p_ne * R^2) / (E * delta_Shell^2);
+kp = (1 + 0.21 * alpha_kp*(R/delta_Shell)^(0.6)) / (1 + 3 * alpha_kp);
+km = (N_work*R-2.5*M_work)/(N_work*R-2*M_work);
+E_k(1)=E; E_c(1)=E;
+ki(1)=sqrt(E_k(1)/ E_c(1))/E;
+k1(1)= k0*kp*km*ki(1);
+sigma_kp(1) = k1(1) * (E * delta_Shell) / R;% Critical stress
+sigma2 = p_ne * R/delta_Shell;
+y(1)=sigma_kp(1)/sigma2;
+sigma_i(1) = sigma2 * sqrt(1 + y(1) + y(1)^2);
+[sigma_kp,~]=shell(sigma_i(1),sigma_p,k0,kp,km,delta_Shell,R,sigma2,0,0);
+sigma_compressed=23.87;%% 这个数我找不到！！！
+eta_normal=sigma_kp(end)/sigma_compressed
+%切向应力
+P_KP = 0.92 * E *delta_Shell^2/l_mainstay/R * sqrt(delta_Shell / R) ; % First equation
+k_p = sqrt(1 + (p_ne / P_KP)); 
+k_i(1)=1;
+tau_OKP =0.78 * E *delta_Shell/R * power(delta_Shell*R/l_mainstay^2,1/4) ;
+tau_KP_1(1) = k_p*k_i*tau_OKP;
+sigma_1_=N_work/(2*pi*R*delta_Shell);
+sigma_i_(1)= sqrt((sigma_1_)^2 + (sigma2)^2 - sigma_1_*sigma2+ 3*(tau_KP_1(1))^2);
+[~,tau_KP_1]=shell(sigma_i_(1),sigma_p,1,kp,1,delta_Shell,R,sigma2,tau_KP_1(1),sigma_1_);
+% disp(['Lambda_i: ', num2str(lambda_i)]);
+tao_max=16.114;%% 这个数我找不到！！！
+eta_tangential=tau_KP_1(end)/tao_max
 %% 4.1 非密封隔间模型图
 
 
