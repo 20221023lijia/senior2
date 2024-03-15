@@ -319,7 +319,7 @@ c=3*h/8;
 N_work=140e3;Q_work=90e3;M_work=330e6;
 k_sw=0.85;sigma_B=320;sigma_p=120;l_mainstay=2.4e3;%mm
 t=60;V=554.6;H=3;q=46059;nx=3.5;
-% 我非常不理解单位换算，为什么后边e-6
+% 问题2：我非常不理解单位换算，为什么后边e-6
 p_ne = p0 + rho_UDMH * g * nx * H*1e-6; % Operational internal pressure内部运行压力
 p_maxe = p0 + rho_UDMH * g * nx* (H + h)*1e-6; % Max operational pressure
 p_top=p_maxe;
@@ -347,7 +347,7 @@ Omega = Omega_1 + Omega_2;
 N_prime = f * p_maxe * Omega;
 F_lower_bound = abs(N_prime) /sigma_B - delta_Shell * l - delta_bottom * l_0;
 F_brochure=F_lower_bound*(1+0.1);
-%问题一，这个数据我找不到
+%问题1：这个数据我找不到
 b=sqrt(6*F_brochure/atand(theta_0));
 a=2*F_brochure/b;
 %% 3.2 罐体稳定性
@@ -364,7 +364,7 @@ sigma_kp(1) = k1(1) * (E * delta_Shell) / R;% Critical stress
 sigma2 = p_ne * R/delta_Shell;
 y(1)=sigma_kp(1)/sigma2;
 sigma_i(1) = sigma2 * sqrt(1 + y(1) + y(1)^2);
-[epsilon_1_sigma,i_sigma,count_sigma,sigma_kp,~]=shell(sigma_i(1),sigma_p,k0,kp,km,delta_Shell,R,sigma2,sigma_kp(1),0);
+[epsilon_1_sigma,i_sigma,count_sigma,sigma_kp,~]=shell1(sigma_i(1),sigma_p,k0,kp,km,delta_Shell,R,sigma2,sigma_kp(1),0);
 sigma_compressed=sigma_11_joint_max;
 eta_normal=sigma_kp(end)/sigma_compressed
 %切向应力
@@ -375,7 +375,7 @@ tau_OKP =0.78 * E *delta_Shell/R * power(delta_Shell*R/l_mainstay^2,1/4) ;
 tau_KP_1(1) = k_p*k_i*tau_OKP;
 sigma_1_=N_work/(2*pi*R*delta_Shell);
 sigma_i_(1)= sqrt((sigma_1_)^2 + (sigma2)^2 - sigma_1_*sigma2+ 3*(tau_KP_1(1))^2);
-[epsilon_1_tao,i_tao,count_tao,~,tau_KP_1]=shell(sigma_i_(1),sigma_p,1,k_p,1,delta_Shell,R,sigma2,tau_KP_1(1),sigma_1_);
+[epsilon_1_tao,i_tao,count_tao,~,tau_KP_1]=shell1(sigma_i_(1),sigma_p,1,k_p,1,delta_Shell,R,sigma2,tau_KP_1(1),sigma_1_);
 % disp(['Lambda_i: ', num2str(lambda_i)]);
 tao_max=abs(sigma_11_joint_min);
 eta_tangential=tau_KP_1(end)/tao_max
