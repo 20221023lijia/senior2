@@ -251,7 +251,7 @@ m_b6=49;m_gb6=150;m_fuel6=1412;m_bottom6=[m_b6  m_fuel6 m_gb6] ;
 x_bottom5_b=cc-frame(6);x_bottom5_f=cc-frame(6)-cc0;
 x_bottom6_b=cc-frame(7);x_bottom6_f=cc-frame(7)-cc0;x_bottom6_g=cc-frame(7)-1.64;
 x_bottom6=[x_bottom6_b x_bottom6_f x_bottom6_g];
-% 5截面
+% 5截面   后面你还要校验的
 g1=g0*(Re/(Re+h))^2;g1=9.81;
 ny=0.3017;zz=-0.1354;
 P5y_b=-(m_bottom5)*g1*(ny+zz/g1*x_bottom5_b);
@@ -296,13 +296,174 @@ M_(35)=theta(35,2)+H_p(35);M_(36+13)=theta(36+13,2)+H_p(36+13);
 fprintf('Q_=%.2f\n',Q_(6),Q_(36+13))
 fprintf('N_=%.2f\n',N_(18),N_(36+31))
 fprintf('M_=%.2f\n',M_(35),M_(36+13))
-
 %% 2.3 确定桁架横截面
+Q_max = max(theta(:,4))*1e3; %in N
+M_max = max(theta(:,2))*1e6; %in N*mm
+E = 7.2e4; %in MPa
+sigma_o_2 = 270; %in MPa
+alpha_belt= power(abs(Q_max) / (4.8 * E),1/3);
+sigma_kp = sigma_o_2*0.9;%问题3：我不知道这个系数怎么来的
+h_wall=power( (3 *abs(M_max)) / (2 * alpha_belt * sigma_kp),3/7);
+F1 = abs(M_max)/2/h_wall/sigma_kp;
+F1/(2e2)
+F0=0.726;%in mm2
+
+H_corner=16;S_corner=2.4;%in mm  
+x0_corner=4.788;y0_corner=x0_corner;%in mm  
+Ix_corner=1620;Iy_corner=Ix_corner;%in mm4
+k=0.46;%问题4：我不知道这个系数怎么来的
+b1_corner=H_corner-S_corner/2;
+sigma_o_kp = 0.9*k *E/((b1_corner/ S_corner)^2);%MPa
+%问题5：我不知道这个系数0.9怎么来的
+sigma_p=190;
+if sigma_o_kp>sigma_p
+sigma_star = sigma_o_2 + ((sigma_o_2 - sigma_p)^2) / (0.002*E);
+end
+s = sqrt(1 + (4*sigma_star*sigma_o_kp) / ((sigma_star - sigma_p)^2));
+sigma_kp1 = sigma_star *(s-1)/ (s+1);
+h_wall1=ceil(abs(M_max)/ (2 * F1 * sigma_kp1));
+delta_wall=ceil(alpha_belt * h_wall1^(1/3)); 
+delta_covering=2.2;
+t1 = 30; %mm
+P_cp1 = Q_max*t1/h_wall1;
+tao_B_D16AT=250;
+F1_rivet=P_cp1/tao_B_D16AT;
+d1_rivet=ceil(sqrt(2*F1_rivet/pi));%四舍五入到指定位数round(X, N)
+t2=t1;
+P_cp2 = max(theta(:,5))*t2/2;
+d2_rivet=ceil(sqrt(4*P_cp2/pi/tao_B_D16AT));
+%% 2.4 桁架校验
+b0=30*delta_covering+delta_wall+B+S_corner;
+F=h_wall1*delta_wall+4*F1+b0*delta_covering...
+    -2*d1_rivet*(delta_wall+2*S_corner)-2*d2_rivet*(delta_covering+S_corner);
+S_x = b0 * delta_covering * (h_wall1+delta_covering)/2- 2*d2_rivet*(delta_covering+S_corner)* (h_wall1/2 +delta_covering-(delta_covering+S_corner)/2);
+y_c = S_x /F;
+%从这边开始算----------------------------------------------------------
+a1 = h/2 - y_c;
+a2 = h/2 + y_c;
+I_wall = b0 * h^3 / 12 + b0 * delta_0 * (h/2 - delta_0/2)^2;
+I_covering = 2 * ((b0 * S^3 / 12) + (b0 * S * (h/2 + S/2 + y_c)^2));
+I_corner= 2 * (b0 * S * (h/2 - y_c - y0)^2); 
+I_rivet=0;
+I = I_wall + I_crest + I_rivet-F*y_c^2; %对应文本100页
+
+[~, idx] = min(M_max);
+N_coor=N(idx);
+sigma_p_A = (M_min / I) * (h/2 - c) + (N*1e3 / F); % Convert N from kN to N
+sigma_p_B = (M_min / I) * (h/2 + c) + (N*1e3 / F); % Convert N from kN to N
+
+% Select the larger compressive stress
+sigma_p_max = max(sigma_p_A, sigma_p_B); % Largest compressive stress
+
+% Safety factor for buckling
+k_buckle_B = 0.8; % Buckling coefficient for point B
+eta_buckle = k_buckle_B * 440 / sigma_p_max;
+
+% Safety factor for stability
+sigma_kp = 236.2; % Critical stress for buckling, in MPa
+sigma_c_max = 166.9; % Maximum compressive stress, in MPa
+eta_stability = sigma_kp / sigma_c_max;
+
+b0 = 150.9; % Base width of the section, in mm
+F2 = 121.2; % Area or force parameter related to flanges, check context, in mm^2 (example value)
+d1 = 7.325; % Distance to the flange or similar, in mm (example value)
+delta = 2*delta_0; % Twice the thickness parameter, in mm (example value)
+
+% S0 calculation
+S0 = (1/2) * ((b0*((h/2 - c)^2)) + (b0*delta*((h/2 - c - delta/2)^2)) + (2*F2*((h/2 - c - y0)^2)) - (d1*(delta + 2*S)*(h/2 - c - 2*d1 + delta/2)^2));
 
 
+% Maximum shear stress (tau_p_max)
+tau_p_max = (Q_l_max * S_0) / (I * delta); % in MPa
+
+% Calculation based on Hooke's law (tau_0_kp)
+E = 4.8e7; % Modulus of elasticity in MPa
+h_1 = 141.8; % Dimension in mm
+tau_0_kp = (4.8 * E * delta^2) / (h_1^2); % in MPa
+
+% Shear stress limit of proportionality (tau_m)
+sigma_m = 190; % Material's yield stress in MPa
+tau_m = sigma_m / sqrt(3); % in MPa
+
+% Refinement of tau_kp according to equation (3.79)
+tau_star = tau_0_kp / sqrt(3); % in MPa
+
+% Calculation of corrected tau_kp
+tau_kp = tau_star / (tau_0_kp + tau_star - tau_m); % in MPa
+
+% Safety factor for wall stability from shear stress (eta)
+tau_p_max_val = 70.9; % Maximum shear stress in MPa (from previous calculations or given)
+eta = tau_kp / tau_p_max_val;
+% Given values
+h = 170; % Height dimension in mm
+c = 21.88; % Distance from the neutral axis to the outer fiber in mm
+b0 = 150.9; % Width dimension in mm
+delta_0 = 3.2; % First delta value in mm
+delta = 7.325; % Second delta value in mm (possibly the total thickness)
+F2 = 141.8; 
+S0 = (1/2) * ((b0*((h/2 - c)^2)) + (b0*delta_0*((h/2 - c - delta_0/2)^2)) ...
+     + (2*F2*((h/2 - c - y0)^2)) - (d1*(delta + 2*delta_0)*(h/2 - c - d1 + delta_0/2)^2));
+ % Given values and equations as per the image
+Q_l_max = 32.1e3; % Shear force in N (converted from kN)
+S_1 = 3.673e4; % Static moment S1 in mm^3 (may need to be calculated based on your problem)
+I = 6334e6; % Moment of inertia in mm^4
+t_1 = 30; % Thickness in mm
+
+% Force on a rivet determined by formula (3.81)
+P_r1 = (Q_l_max * S_1) / (I * t_1); % in Newtons
+
+% Shear force on a rivet according to equation (3.82)
+d_1 = 4; % Diameter of the rivet in mm
+P_lcp = (pi * d_1^2) / 4 * (t_1/245); % in Newtons, 245 could be the shear strength in MPa, confirm this from context
+
+% Safety factor for shear on the rivet
+eta_shear = (2 * P_lcp) / P_r1;
+
+% The force taken by a rivet in the connection joint may be different
+P_r2 = 780; % Force on the second rivet in N, given value
+
+% Safety factor for the second rivet
+d_2 = 3; % Diameter of the second rivet in mm
+P_2cp = (pi * d_2^2) / 4 * (t_1/245); % in Newtons, similar calculation as P_lcp
+eta_2 = P_2cp / P_r2;
+
+% Display results
+disp(['Force on rivet 1 (P_r1): ' num2str(P_r1) ' N']);
+disp(['Safety factor for rivet 1 (eta_shear): ' num2str(eta_shear)]);
+disp(['Force on rivet 2 (P_2cp): ' num2str(P_2cp) ' N']);
+disp(['Safety factor for rivet 2 (eta_2): ' num2str(eta_2)]);
+    % Rivet force and geometric parameters
+P_r1 = 5567; % Force on rivet 1 in N
+d_1 = 4; % Diameter of rivet 1 in mm
+delta_1 = 3; % Wall thickness in mm (possibly delta_1)
+
+% Stress on the wall from rivet 1
+sigma_p_cm = P_r1 / (d_1 * delta_1); % in MPa
+
+% Allowable stress based on material properties
+sigma_b = 440; % Ultimate or yield stress in MPa
+safety_factor_b = 1.3; % Safety factor for material stress
+sigma_cm_allow = safety_factor_b * sigma_b; % in MPa
+
+% Safety factor for the wall compression stress
+eta_wall = sigma_cm_allow / sigma_p_cm;
+
+% Stress on the flange from rivet 2
+P_r2 = 780; % Force on rivet 2 in N
+d_2 = 3; % Diameter of rivet 2 in mm
+delta_2 = 3; % Wall thickness in mm (possibly delta_2)
+sigma_p_cm_flange = P_r2 / (d_2 * delta_2); % in MPa
+
+% Safety factor for the flange compression stress
+eta_flange = sigma_cm_allow / sigma_p_cm_flange;
+
+% Display results
+disp(['Compression stress on wall (sigma_p_cm): ' num2str(sigma_p_cm) ' MPa']);
+disp(['Safety factor for wall (eta_wall): ' num2str(eta_wall)]);
+disp(['Compression stress on flange (sigma_p_cm_flange): ' num2str(sigma_p_cm_flange) ' MPa']);
+disp(['Safety factor for flange (eta_flange): ' num2str(eta_flange)]);
 
 
-%% 2.4 桁架表面计算
 
 
 
