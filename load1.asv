@@ -274,6 +274,7 @@ err(P5y,-1e3*(71.96-71.25),'err_Q5') %现在用的是i-1时刻减i时刻
 err(P6y_,-1e3*(66.98-65.52),'err_Q6')%实验误差
 err(M5,-1e3*(-798.7+798.8),'err_M5')
 err(sum(M6),-1e3*(-899.4+899.8),'err_M6')
+
 %% 2.2 qt、M、Q
 f=1.35;
 P_n=f*[-30 17];
@@ -483,14 +484,13 @@ F_c= N_equivalent_max*1e3/ n_c/sigma_b
 n_beam = 39; %需要改
 B=20;%需要改
 S=2;%需要改
+y0=14.88;%需要改
 F_beam=126.1;%需要改
 I_beam=20120;%需要改
-y0_beam=14.88;%需要改
-H_beam=14.88;%需要改
 b1=B-S/2;
 b = 2 * pi * R /(n_c + n_beam);
 sigma_kr_covering = 3.6 *E/ (b/delta_skin)^2 + 0.15 * E * delta_skin/R; 
-tau_kr_covering = 5 * E / (b/delta_skin)^2 + 0.1 * E * delta_skin/R; 
+tau_kr_covering = 5 * E / (b/delta_skin)^2 + 0.1 * E * delta_skin * R; 
 k = 0.385; 
 sigma_kp0_topical = k * E /(b1/S)^2;
 if sigma_kp0_topical>sigma_p
@@ -499,9 +499,9 @@ sigma_kp_topical = sigma_ast - (sigma_ast - sigma_p) * sqrt(sigma_p / sigma_kp0_
 end
 b_practical_covering= b * sqrt(sigma_kr_covering/sigma_kp_topical); 
 F = F_beam + b_practical_covering * delta_skin;
-S_x_prime = b_practical_covering * delta_skin*(y0_beam+delta_skin/2);
+S_x_prime = b_practical_covering * delta_skin*(y0+delta_skin/2);
 c = S_x_prime/F; 
-I_x_prime = I_beam + b_practical_covering*delta_skin*(y0_beam + delta/2)^2;
+I_x_prime = I_beam + b_practical_covering*delta_skin*(y0 + delta/2)^2;
 I_x = I_x_prime - F * c^2;
 c_coef = 2; 
 l = L/(n_c+ 1);
@@ -509,7 +509,7 @@ sigma_kp0_general= c_coef * pi^2 * E * I_x /l^2 / F;
 if sigma_kp0_general>sigma_p
 sigma_kp_general = sigma_ast - (sigma_ast - sigma_p) * sigma_p / sigma_kp0_general;
 end
-sigma_kp_beam=min(sigma_kp_topical,sigma_kp_general);
+sigma_kp_general=min(sigma_kp_topical,sigma_kp_general);
 %% 4.3 计算危险截面法向和切向应力
 y_0= -(R^2 *ai_p(1,:)) ./ (2 * ai_p(3,:));
 for i=1:3
@@ -533,61 +533,148 @@ A=(ai_p(3,:)-y_c*ai_p(1,:))./Jz;
 B=ai_p(1,:)/F-A*y_c;
 y0=-B./A;
 %% 4.4 许用应力计算
-alpha_i_deg = 57.876; %需要改
-tau13 = 5.235; %需要改
-R_tau_i = 0.031;%需要改
-R_sigma_i=0.99;%需要改
+alpha_i_deg = 57.876; % 卷曲角度（单位：度）
+tau13 = 5.235; % 示例值 tau13
+R_tau_i = 0.031; % 示例值 R_tau_i
 if l/b>2
-    xi = 600 * (delta_skin/ R);
+    xi = 600 * (0.8 / 1500);
 else
-    xi = 300 *l/b* (delta_skin/ R);  
+    xi = 300 *l/b* (0.8 / 1500);  
 end
-R_tau_13=0.031;%需要改
-tau_kp_0 = tau_kr_covering;
-tau_kp13 = R_tau_13*tau_kp_0;
-omega_13 = tanh*((0.5+xi)*log(5.235 * R_tau_i));
-sigma_x13 = omega_13*tau13*cotd(alpha_i_deg);
-sigma_theta13 = omega_13*tau13*tand(alpha_i_deg);
-b_i_bar_13 = 0.5 * R_tau_i * (1 - omega_13) *b;
-F_13_star =F_beam+b_i_bar_13*delta_skin;
-sigma_prime_13 = -(omega_13*tau13*delta_skin*R*cotd(alpha_i_deg)) / F_13_star;
 
-q13 = (xi*tau13*b*delta_skin* tand(alpha_i_deg)) / (2 * R);
-M_max_13 = (q13 * l^2)/8;
-sigma_r13 = -183.64; %需要改
-phi13 = 1;
-sigma_13_0=phi13*sigma_r13;
-sigma_kr13 = R_sigma_i *sigma_kr_covering;
-b_pro_13 = b * R_sigma_i*sqrt(sigma_kr13/abs(sigma_13_0));
-a0 = b_pro_13*delta_skin*(y0 + delta_skin/2)/(b_pro_13*delta_skin+F_beam);
-a1 = y0-a0;
-a2 = H_beam-a1;
-I_i =I_beam+b_pro_13*delta_skin^3/12 + b_pro_13 *delta_skin*(a1 + delta/2)^2;
+omega_13 = tanh(0.5) + xi * log(5.235 * R_tau_i);
+tau_kr_0 = 5 * 7.2 * 10^4 * 224.4 * 0.82 + 0.1 * 7.2 * 10^4 * 0.8 * 1500;
+tau_kr13 = R_tau_i * tau13 * tau_kr_0;
+sigma_x13 = omega_13 * tau13 * cotd(alpha_i_deg);
+sigma_theta13 = omega_13 * tau13 * tand(alpha_i_deg);
+
+% 在肋条中的压应力
+b_i_bar_13 = 0.5 * R_tau_i * (1 - omega_13) * 224.4;
+F_13_star = 126.1 + b_i_bar_13 * 0.8;
+sigma_prime_13 = -(omega_13 * tau13 * 224.4 * 0.8 * cotd(alpha_i_deg)) / F_13_star;
+
+% 肋条中的弯曲应力
+% 用于计算惯性矩和最大弯曲矩的变量
+M_max_i =  ;% 最大弯曲矩的值
+I_i = ;% 惯性矩的值
+y_bar = ;% 与 x 轴的距离
+
+sigma_ast = -(M_max_i / I_i) * y_bar;
+% 计算最大弯曲矩
+% 公共变量
+alpha_i_deg = 57.876; % 卷曲角度（单位：度）
+tau13 = 5.235; % 示例值 tau13
+R_tau_i = 0.031; % 示例值 R_tau_i
+l = 825; % 支柱长度（示例值）
+
+% 计算 q_i
+q13 = (0.789 * 5.235 * 224.4 * 0.8 * tand(alpha_i_deg)) / (2 * 1500);
+
+% 计算最大弯曲矩
+M_max_13 = (q13 * l^2) / 8;
+
+% 计算惯性矩
+% 公共变量
+b = 224.4; % 示例值 b
+delta = 0.8; % 示例值 delta
+a1 = 35; % 示例值 a1
+a2 = 20; % 示例值 a2
+I_str = 20120; % 示例值 I_str
+
+% 计算 bпр13
+sigma_r13 = -183.64; % 示例值 sigma_r13
+phi13 = 1; % 示例值 phi13
+R_sigma_13 = 0.999; % 示例值 R_sigma_13
+sigma_kr13 = R_sigma_13 * 9.054; % 示例值 sigma_kr13
+sigma_kr0 = 3.6 * 7.2 * 10^4 * 224.4 * 0.82 + 0.15 * 7.2 * 10^4 * 0.8 * 1500; % 示例值 sigma_kr0
+b_pro_13 = b * R_tau_i * sigma13 / sigma_kr13 * sigma_r13 - sigma_kr13;
+
+% 计算惯性矩
+I_i = I_str + b_pro_13 * delta^3 / 12 + b_pro_13 * delta * a1^2 + delta^3 / 12;
+
+% 计算在点 1 和点 2 的弯曲应力
 sigma_ast1 = -M_max_13 * a1 / I_i;
 sigma_ast2 = M_max_13 * a2 / I_i;
-sigma_str131 =sigma_13_0+sigma_prime_13+sigma_ast1;
-sigma_str132 =sigma_13_0+sigma_prime_13+sigma_ast2;
+% 根据图 4.7，计算 a0、a1、a2
+b_pro_13 = 49.752; % 示例值 b_pro_13
+delta = 0.8; % 示例值 delta
+y0 = 14.88; % 示例值 y0
+F_STR = 126.1; % 示例值 F_STR
+a0 = b_pro_13 * delta * y0 + delta^2 * b_pro_13 * delta + F_STR;
+a1 = y0 - a0;
+a2 = 35 - a1;
+
+% 计算惯性矩
+I_13 = I_str + (b_pro_13 * delta^3 / 12) + b_pro_13 * delta * (3.67 + (0.8 / 2))^2;
+
+% 计算在点 1 和点 2 的弯曲应力
+sigma_ast1 = -M_max_13 * a1 / I_13;
+sigma_ast2 = M_max_13 * a2 / I_13;
+
+% 计算最终的应力
+sigma_str131 = sigma_r13 - sigma_prime_13 - sigma_ast1;
+sigma_str132 = sigma_r13 - sigma_prime_13 + sigma_ast2;
+
+
+
 
 %% 4.5 确定负载最重的受力元件（钢绞线、钢梁、蒙皮板、铆钉）的安全系数
-sigma_eqv_13 = sqrt(sigma_x13^2 - sigma_x13 * sigma_theta13 + sigma_theta13^2 + 3 * tau13^2);
-t=25;d=2.5;
-k_zakl = (t-d)/d; 
-eta_covering= k_zakl * sigma_b / sigma_eqv_13;
-eta_stab =sigma_kp_general/abs(sigma_13_0+sigma_prime_13);
-eta_str1 =sigma_kp_topical/abs(sigma_str131);
-eta_str2 =sigma_b/abs(sigma_str132);
-P1 = sigma_x13 *delta_skin* t;
-P2 = tau13 *delta_skin* t;
-P = sqrt(P1^2 + P2^2);
-tau_sr=sigma_b/sqrt(3);
-P_sr_str = tau_sr * pi * (d/2)^2;
-eta_sr_obsh = P_sr_str / P;
+% 计算等效应力
+sigma_eqv_13 = sqrt(2.592^2 - 2.592 * 6.58 + 6.58^2 + 3 * 5.235^2);
 
-tau12=5.393;%改
-sigma_theta12=0;%改,妈的，真的要算
-P1_str = (tau13 - tau12)*delta_skin*t;
-P2_str = (sigma_theta13- sigma_theta12)*delta_skin*t;
-P_str = sqrt(P1_str^2 + P2_str^2);
-eta_sr_str = P_sr_str / P_str;
+% 计算覆层的安全系数
+k_zakl = 0.9; % 考虑到覆层被铆钉孔削弱的系数
+sigma_v = 440; % 从4.2节得到的σv值
+eta_obsh = k_zakl * sigma_v / sigma_eqv_13;
+
+% 计算整体稳定性的安全系数
+sigma_r = 223.7; % 从4.2节得到的σr_общ值
+eta_stab = (sigma_r - sigma_prime_13 - sigma_str131) / sigma_str131;
+
+% 计算点1处压强杆的稳定性安全系数
+sigma_kr_m = 218.6; % 从4.2节得到的σкр.м值
+eta_str1 = sigma_kr_m / (sigma_str131 - sigma_prime_13);
+
+% 计算点2处压强杆的破坏安全系数
+sigma_v_str2 = 440; % 从4.2节得到的σv值
+eta_str2 = sigma_v_str2 / sigma_str132;
+
+% 检查铆钉的剪切强度
+% 这里计算剪切强度的安全系数
+% 检查铆钉的剪切强度
+% 这里计算剪切强度的安全系数
+
+% 对于将覆层固定到端部纵梁的铆钉：
+P1 = sigma_x13 * delta * t; % 计算P1
+P2 = tau13 * delta * t; % 计算P2
+P = sqrt(P1^2 + P2^2); % 计算P
+P_sr = tau_sr * pi * (d/2)^2; % 计算P_sr
+eta_sr_obsh = P_sr / P; % 计算安全系数
+
+% 对于将覆层固定到肋条的铆钉：
+P1_str = (tau13 - tau12) * delta * t; % 计算P1
+P2_str = (sigma_theta13 - sigma_theta12) * delta * t; % 计算P2
+P_str = sqrt(P1_str^2 + P2_str^2); % 计算P
+P_sr_str = tau_sr * pi * (d/2)^2; % 计算P_sr
+eta_sr_str = P_sr_str / P_str; % 计算安全系数
+
+
+
 
 % saveAllFigures("K:\Matlab\code\mechaincs\launch_vehicle\load\fig")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
