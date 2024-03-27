@@ -1,4 +1,5 @@
-clc;close all;dbclear all;clear all
+clc;close all;clear all
+% dbclear all
 % K:\Matlab\code\mechaincs\launch_vehicle\load
 %  fprintf("%.2f\n",X)
 load('q_m_1.mat',"q_m_1")
@@ -282,13 +283,17 @@ P_t=f*[25 -30];
 P_t_p(18)=P_t(1);P_t_p(36+31)=P_t(2);
 H=f*[10 -12];
 H_p(35)=H(1);H_p(36+13)=H(2);
-theta=ring_in2('1.txt');
+theta=ring_in2('1.txt');%读取以及写入xls
+%disp(strrep(mat2str(theta(1:36, 2:5), 4), ';', '\n'))%将分号替换成换行符，但是不起作用
 y_label={'','M,КН*М','N,КН','Q,КН','QT,КН/М'};
 for i=2:5
 plot2s(theta(:,1),theta(:,i), i+11,  y_label(i))
 %polarplot(theta(:,1),theta(:,2),'o')
 end 
 A=[];
+figure(17)
+plot(theta(:,1),theta(:,2),theta(:,1),theta(:,3),theta(:,1),theta(:,4),theta(:,1),theta(:,5))
+legend(y_label(2:5),'Location','southeast');%元组切片
 Q_(6)=theta(6,4)+P_n_p(6);Q_(36+13)=theta(36+13,4)+P_n_p(36+13);
 N_(18)=theta(18,3)+P_t_p(18);N_(36+31)=theta(36+31,3)+P_t_p(36+31);
 M_(35)=theta(35,2)+H_p(35);M_(36+13)=theta(36+13,2)+H_p(36+13);
@@ -305,32 +310,38 @@ sigma_o_2 = 270; %in MPa
 alpha_belt= power(abs(Q_max) / (4.8 * E),1/3);
 sigma_kp = sigma_o_2;
 h_wall=power( (3 *abs(M_max)) / (2 * alpha_belt * sigma_kp),3/7);
-F1 = abs(M_max)/2/h_wall/sigma_kp;
+F1 = abs(M_max)/h_wall/sigma_kp;
 F1/(2e2)
-F0=0.684;%in mm2
+F0=144.1;%in mm2
 
-H_corner=18;S_corner=2;%in mm  
-x0_corner=5.172;y0_corner=x0_corner;%in mm  
-Ix_corner=2040;Iy_corner=Ix_corner;%in mm4
+H_corner=30;S_corner=2.5;%in mm  
+x0_corner=8.324;y0_corner=x0_corner;%in mm  
+Ix_corner=12240;Iy_corner=Ix_corner;%in mm4
 k=0.385;
 b1_corner=H_corner-S_corner/2;
 sigma_o_kp = k *E/((b1_corner/ S_corner)^2);%MPa
 sigma_p=190;%比例极限
 if sigma_o_kp>sigma_p
-sigma_star = sigma_o_2 + ((sigma_o_2 - sigma_p)^2) / (0.002*E);
+% sigma_star = sigma_o_2 + ((sigma_o_2 - sigma_p)^2) / (0.002*E);
+% end
+% s = sqrt(1 + (4*sigma_star*sigma_o_kp) / ((sigma_star - sigma_p)^2));
+% sigma_kp1 = sigma_star *(s-1)/ (s+1);
+sigma_star = 1.2 * sigma_o_2; 
+sigma_kp1 = sigma_star - (sigma_star - sigma_o_kp) *sqrt(sigma_p /sigma_o_kp) ;
 end
-s = sqrt(1 + (4*sigma_star*sigma_o_kp) / ((sigma_star - sigma_p)^2));
-sigma_kp1 = sigma_star *(s-1)/ (s+1);
-h_wall1=ceil(abs(M_max)/ (2 * F1 * sigma_kp1));
+h_wall1=ceil(abs(M_max)/ (2 * F0 * sigma_kp1));
 delta_wall=ceil(alpha_belt * h_wall1^(1/3)); 
 delta_covering=2.2;
-t1 = 30; %mm
+t1 = 20; %mm
 P_cp1 = abs(Q_max)*t1/h_wall1;%铆钉和墙
 tao_B_D16AT=250;
 F1_rivet=P_cp1/tao_B_D16AT;
-d1_rivet=ceil(sqrt(2*F1_rivet/pi));%四舍五入到指定位数round(X, N)
+%d1_rivet=round(sqrt(2*F1_rivet/pi),1);%四舍五入到指定位数round(X, N)
+d1_rivet=ceil(sqrt(2*F1_rivet/pi));
 t2=t1;
 P_cp2 = abs(max(theta(:,5)))*t2/2;%铆钉和蒙皮
+P_cp2/tao_B_D16AT
+%d2_rivet=round(sqrt(4*P_cp2/pi/tao_B_D16AT),1);
 d2_rivet=ceil(sqrt(4*P_cp2/pi/tao_B_D16AT));
 %% 2.4 桁架校验
 %正应力
@@ -339,19 +350,21 @@ F=h_wall1*delta_wall+4*F1+b0*delta_covering...
     -2*d1_rivet*(delta_wall+2*S_corner)-2*d2_rivet*(delta_covering+S_corner);
 S_x = b0 * delta_covering * (h_wall1+delta_covering)/2- 2*d2_rivet*(delta_covering+S_corner)* (h_wall1/2 +delta_covering-(delta_covering+S_corner)/2);
 y_c = S_x /F;
-y1_rivet=(H_corner-S_corner)/2+S_corner;
-h1_rivet=h_wall1-2*y1_rivet;
-I_wall = delta_wall * h_wall1^3 / 12 ;
+l1=(H_corner-S_corner)/2+S_corner;
+h1_rivet=h_wall1-2*l1;
+I_wall = delta_wall * h_wall1^3 / 12 ;fprintf('%.1f\n',I_wall)
 I_covering=b0*delta_covering^3/ 12+delta_covering * b0 * (h_wall1/2 + delta_covering/2)^2;
-I_corner=4*(Ix_corner+F0*(h_wall1/2-y0_corner)^2);
+fprintf('%.1f\n',I_covering)
+I_corner=4*(Ix_corner+F0*(h_wall1/2-y0_corner)^2);fprintf('%.1f\n',I_corner)
 I_rivet= 2 * (d1_rivet^3 * (delta_wall+2*S_corner) / 12+d1_rivet*(delta_wall+2*S_corner) * (h1_rivet/2)^2)...
         +2 * (d2_rivet*(delta_covering+S_corner)^3 / 12+ d2_rivet*(delta_covering+S_corner)*(h_wall1/2 +delta_covering-(delta_covering+S_corner)/2))^2;
-I = I_wall + I_covering +I_corner- I_rivet-F*y_c^2;
+fprintf('%.1f\n',I_rivet)
+I = I_wall + I_covering +I_corner- I_rivet-F*y_c^2;fprintf('%.1f\n',I)
 
-distance=[h/2-y_c h/2 + y_c];M=[M_max M_min];N=[N_coor1 N_coor2];
-sigma_p_section = (M / I)*distance' + (N/ F);
-sigma_p_tensile= max(sigma_p_section);
-sigma_p_compressive= abs(min(sigma_p_section));
+distance=[h_wall1/2-y_c -h_wall1/2-y_c];M=[M_max M_min];N=[N_coor1 N_coor2];
+sigma_p_section = distance'*(M / I) + (N/ F);%the shape of matrix 自行计算
+sigma_p_tensile= max(max(sigma_p_section));%所有元素
+sigma_p_compressive= abs(min(min(sigma_p_section)));
 k_buckle_B = 0.8; % Buckling coefficient for point B
 sigma_b = 440; % Ultimate or yield stress in MPa
 eta_buckle = k_buckle_B * sigma_b / sigma_p_tensile;
@@ -409,7 +422,8 @@ p_ne = p0 + rho_UDMH * g * nx * H*1e-6; % Operational internal pressure内部运
 p_maxe = p0 + rho_UDMH * g * nx* (H + h)*1e-6; % Max operational pressure
 p_top=p_maxe;
 %连接部校验
-delta_Shell= ceil((f * p_ne * R) / (k_sw * sigma_B));%mm
+delta_Shell= (f * p_ne * R) / (k_sw * sigma_B);%mm
+delta_Shell=3;
 sigma_11_joint_min=f*(N_work/(2*pi*R*delta_Shell)-M_work/(pi*(R)^2*delta_Shell));%经向应力
 sigma_11_joint_max=f*(N_work/(2*pi*R*delta_Shell)+M_work/(pi*(R)^2*delta_Shell));
 tao_max=f*Q_work/(pi*R*delta_Shell);%切向应力
@@ -426,14 +440,16 @@ l = k * sqrt(R*delta_Shell);
 l_0 = k * sqrt(R_H*delta_bottom); 
 alpha_0=theta_0-180*l_0/pi/R_H;
 C=R_H*cosd(theta_0)-l;
-Omega_1 = -0.5 * C^2 * tand(alpha_0); 
-Omega_2 = 0.5 * l^2 *tand(theta_0)+ 0.5 *R_H*l_0 - 0.5 * C^2 * (tand(theta_0) - tand(alpha_0)); 
-Omega = Omega_1 + Omega_2;
+Omega_1 = -0.5 * C^2 * tand(alpha_0); fprintf('%.1f\n',Omega_1)
+Omega_2 = 0.5 * l^2 *tand(theta_0)+ 0.5 *R_H*l_0 - 0.5 * C^2 * (tand(theta_0) - tand(alpha_0)); fprintf('%.1f\n',Omega_2)
+Omega = Omega_1 + Omega_2;fprintf('%.1f\n',Omega)
 N_prime = f * p_maxe * Omega;
 F_lower_bound = abs(N_prime) /sigma_B - delta_Shell * l - delta_bottom * l_0;
 F_brochure=F_lower_bound;
 b=sqrt(6*F_brochure/atand(theta_0));
 a=2*F_brochure/b;
+
+
 %% 3.2 罐体稳定性
 E = 6.8 * 10^4;
 % 法向应力
@@ -449,8 +465,10 @@ sigma2 = p_ne * R/delta_Shell;
 y(1)=sigma_kp(1)/sigma2;
 sigma_i(1) = sigma2 * sqrt(1 + y(1) + y(1)^2);
 [epsilon_1_sigma,i_sigma,count_sigma,sigma_kp,~]=shell1(sigma_i(1),sigma_p,k0,kp,km,delta_Shell,R,sigma2,sigma_kp(1),0);
-sigma_compressed=sigma_11_joint_max;
+sigma_compressed=abs(sigma_11_joint_min);
 eta_normal=sigma_kp(end)/sigma_compressed
+eta_normal=14.12/sigma_compressed
+%通过增大厚度delta->增大eta
 %切向应力
 P_KP = 0.92 * E *delta_Shell^2/l_mainstay/R * sqrt(delta_Shell / R) ;
 k_p = sqrt(1 + (p_ne / P_KP)); 
@@ -461,8 +479,8 @@ sigma_1_=N_work/(2*pi*R*delta_Shell);
 sigma_i_(1)= sqrt((sigma_1_)^2 + (sigma2)^2 - sigma_1_*sigma2+ 3*(tau_KP_1(1))^2);
 [epsilon_1_tao,i_tao,count_tao,~,tau_KP_1]=shell1(sigma_i_(1),sigma_p,1,k_p,1,delta_Shell,R,sigma2,tau_KP_1(1),sigma_1_);
 % disp(['Lambda_i: ', num2str(lambda_i)]);
-tao_max=abs(sigma_11_joint_min);
 eta_tangential=tau_KP_1(end)/tao_max
+eta_tangential=21.78/tao_max
 %% 4.2 非密封隔间参数
 E = 7.2 * 10^4; a=0.6;f=1.3;n_c=4;
 R=1500;L=4800;F_crossbar=800;%mm
